@@ -13,6 +13,7 @@ Public Class Service1
     Private sendingClient As UdpClient
     Private receivingThread As Thread
     Dim SQLServer As String = "localhost", Port As Integer = 514, SQLPW As String, SQLUN As String, SQLDB As String, SQLConnStr As String, lastExTS As Date = "9/1/1985"
+    Dim sqlRetryCount As Integer = 0
 
     Protected Overrides Sub OnStart(ByVal args() As String)
 
@@ -44,38 +45,6 @@ Public Class Service1
                 If line.Substring(0, line.IndexOf("=") + 1) = "sqldatabase=" And line.Length > 12 Then SQLDB = line.Substring(line.IndexOf("=") + 1)
             Next line
 
-            Dim csb As New SqlConnectionStringBuilder
-            csb.InitialCatalog = SQLDB
-            csb.UserID = SQLUN
-            csb.Password = SQLPW
-            csb.DataSource = SQLServer
-
-            SQLConnStr = csb.ConnectionString
-
-            Dim query As String = "IF OBJECT_ID('dbo.Syslog2SQL', 'U') IS NULL "
-            query += "BEGIN "
-            query += "CREATE TABLE [dbo].[Syslog2SQL]("
-            query += "[id] INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Syslog2SQL PRIMARY KEY,"
-            query += "[Severity] VARCHAR(8) NOT NULL,"
-            query += "[Timestamp] datetime2(2) NOT NULL,"
-            query += "[Host] VARCHAR(30) NOT NULL,"
-            query += "[Application] VARCHAR(20),"
-            query += "[PID] VARCHAR(20),"
-            query += "[MsgID] VARCHAR(20),"
-            query += "[Message] VARCHAR(8000),"
-            query += ")"
-            query += " END"
-
-            'create sql table if it doesn't exist in specified db
-            Using con As New SqlConnection(SQLConnStr)
-                Using cmd As New SqlCommand(query)
-                    cmd.Connection = con
-                    con.Open()
-                    cmd.ExecuteNonQuery()
-                    con.Close()
-                End Using
-            End Using
-
             receivingClient = New UdpClient(Port)
             Dim start As ThreadStart = New ThreadStart(AddressOf Receiver)
             receivingThread = New Thread(start)
@@ -95,6 +64,54 @@ Public Class Service1
     End Sub
     Sub Receiver()
         'https://stackoverflow.com/questions/16160550/visual-basic-udpclient-server-client-model
+
+        Dim csb As New SqlConnectionStringBuilder
+        csb.InitialCatalog = SQLDB
+        csb.UserID = SQLUN
+        csb.Password = SQLPW
+        csb.DataSource = SQLServer
+
+        SQLConnStr = csb.ConnectionString
+
+        Dim query As String = "IF OBJECT_ID('dbo.Syslog2SQL', 'U') IS NULL "
+        query += "BEGIN "
+        query += "CREATE TABLE [dbo].[Syslog2SQL]("
+        query += "[id] INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Syslog2SQL PRIMARY KEY,"
+        query += "[Severity] VARCHAR(8) NOT NULL,"
+        query += "[Timestamp] datetime2(2) NOT NULL,"
+        query += "[Host] VARCHAR(30) NOT NULL,"
+        query += "[Application] VARCHAR(20),"
+        query += "[PID] VARCHAR(20),"
+        query += "[MsgID] VARCHAR(20),"
+        query += "[Message] VARCHAR(8000),"
+        query += ")"
+        query += " END"
+
+10:
+        If sqlRetryCount >= 4 Then
+            EventLog.WriteEntry("Syslog2SQL", "Can't access the SQL server specified after 5 attempts, giving up!", EventLogEntryType.Error, 1, 1)
+            [Stop]()
+            Exit Sub
+        End If
+
+        Try
+
+            'create sql table if it doesn't exist in specified db
+            Using con As New SqlConnection(SQLConnStr)
+                Using cmd As New SqlCommand(query)
+                    cmd.Connection = con
+                    con.Open()
+                    cmd.ExecuteNonQuery()
+                    con.Close()
+                End Using
+            End Using
+
+        Catch ex As Exception
+            EventLog.WriteEntry("Syslog2SQL", "Can't access the SQL server specified, will try again in 3 minutes." & vbCrLf & vbCrLf & "Exception Message:" & vbCrLf & ex.Message & vbCrLf & vbCrLf & "Exception Trace:" & vbCrLf & ex.StackTrace, EventLogEntryType.Warning, 1, 1)
+            Thread.Sleep(180000)
+            sqlRetryCount += 1
+            GoTo 10
+        End Try
 
         Dim endPoint As IPEndPoint = New IPEndPoint(IPAddress.Any, Port)
 
