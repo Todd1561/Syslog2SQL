@@ -124,13 +124,13 @@ Public Class Service1
 
                 Dim bsdMatch = Regex.Match(message, "^<(\d+)>(.+ \d\d:\d\d:\d\d) (.+?) (.+)$")
 
-                Dim msgDate As Date, severity As Integer, host As String = "", msg As String = "", app As String = "", pid As String = "", msgid As String = "", isValid As Boolean = False
+                Dim severity As Integer, host As String = "", msg As String = "", app As String = "", pid As String = "", msgid As String = "", isValid As Boolean = False ',msgDate As Date
 
                 If bsdMatch.Success Then
                     'message is in BSD format
                     isValid = True
                     severity = bsdMatch.Groups(1).Value
-                    msgDate = Date.ParseExact(bsdMatch.Groups(2).Value.Replace("  ", " ").Trim, "MMM d HH:mm:ss", CultureInfo.InvariantCulture)
+                    'msgDate = Date.ParseExact(bsdMatch.Groups(2).Value.Replace("  ", " ").Trim, "MMM d HH:mm:ss", CultureInfo.InvariantCulture)
                     host = bsdMatch.Groups(3).Value
                     msg = bsdMatch.Groups(4).Value
 
@@ -141,7 +141,7 @@ Public Class Service1
                         'message is in IETF format
                         isValid = True
                         severity = ietfMatch.Groups(1).Value
-                        msgDate = Date.Parse(ietfMatch.Groups(3).Value)
+                        'msgDate = Date.Parse(ietfMatch.Groups(3).Value)
                         host = ietfMatch.Groups(4).Value
                         app = ietfMatch.Groups(5).Value
                         msg = ietfMatch.Groups(8).Value
@@ -160,7 +160,8 @@ Public Class Service1
                         Dim cmd As New SqlCommand(sql, con)
 
                         cmd.Parameters.Add("@Severity", SqlDbType.VarChar, 8).Value = severity
-                        cmd.Parameters.Add("@Timestamp", SqlDbType.DateTime2, 2).Value = msgDate
+                        'cmd.Parameters.Add("@Timestamp", SqlDbType.DateTime2, 2).Value = msgDate
+                        cmd.Parameters.Add("@Timestamp", SqlDbType.DateTime2, 2).Value = Date.Now
                         cmd.Parameters.Add("@Host", SqlDbType.VarChar, 30).Value = host
                         cmd.Parameters.Add("@Application", SqlDbType.VarChar, 20).Value = app
                         cmd.Parameters.Add("@PID", SqlDbType.VarChar, 20).Value = pid
