@@ -79,7 +79,7 @@ Public Class Service1
         query += "[id] INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Syslog2SQL PRIMARY KEY,"
         query += "[Severity] VARCHAR(8) NOT NULL,"
         query += "[Timestamp] datetime2(2) NOT NULL,"
-        query += "[Host] VARCHAR(30) NOT NULL,"
+        query += "[Host] VARCHAR(300) NOT NULL,"
         query += "[Application] VARCHAR(20),"
         query += "[PID] VARCHAR(20),"
         query += "[MsgID] VARCHAR(20),"
@@ -162,7 +162,7 @@ Public Class Service1
                         cmd.Parameters.Add("@Severity", SqlDbType.VarChar, 8).Value = severity
                         'cmd.Parameters.Add("@Timestamp", SqlDbType.DateTime2, 2).Value = msgDate
                         cmd.Parameters.Add("@Timestamp", SqlDbType.DateTime2, 2).Value = Date.Now
-                        cmd.Parameters.Add("@Host", SqlDbType.VarChar, 30).Value = host
+                        cmd.Parameters.Add("@Host", SqlDbType.VarChar, 300).Value = host
                         cmd.Parameters.Add("@Application", SqlDbType.VarChar, 20).Value = app
                         cmd.Parameters.Add("@PID", SqlDbType.VarChar, 20).Value = pid
                         cmd.Parameters.Add("@MsgID", SqlDbType.VarChar, 20).Value = msgid
